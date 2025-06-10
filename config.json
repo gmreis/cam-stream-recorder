@@ -1,0 +1,28 @@
+{
+  "max_size_in_megabytes": 10,
+  "local_storage_path": "/var/lib/cam-stream-recorder",
+  "storage_providers": [
+    {
+      "provider": "aws",
+      "region": "us-east-1",
+      "bucket": "cam-stream-recorder",
+      "path": "recorder/"
+    }
+  ],
+  "recorders": [
+    {
+      "name": "Front Door",
+      "location": "indoor",
+      "video_decoder": "h264",
+      "rtsp": "rtsp://frontdoor:554/stream",
+      "storage_providers": ["aws"]
+    },
+    {
+      "name": "Back Yard",
+      "location": "outdoor",
+      "video_decoder": "h264",
+      "rtsp": "rtsp://backyard:554/stream",
+      "storage_providers": ["aws"]
+    }
+  ]
+}
