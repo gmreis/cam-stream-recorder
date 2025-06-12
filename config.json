@@ -14,7 +14,7 @@
       "name": "Front Door",
       "location": "indoor",
       "video_decoder": "h264",
-      "rtsp": "rtsp://frontdoor:554/stream",
+      "rtsp": "rtsp://localhost:8554/mystream",
       "storage_providers": ["aws"]
     },
     {

@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/gmreis/cam-stream-recorder/cmd/dtos"
+	"github.com/gmreis/cam-stream-recorder/internal/config"
+	"github.com/gmreis/cam-stream-recorder/internal/stream-recorder"
 )
 
 func loadConfig(path string) (*dtos.Config, error) {
@@ -42,6 +44,23 @@ func main() {
 	// 		fmt.Println("Recovered from panic:", r)
 	// 	}
 	// }()
+
+	// Convert dtos.Recorder to config.CameraConfig before passing
+	cameraConfig := config.CameraConfig{
+		Name:             cfg.Recorders[0].Name,
+		Location:         cfg.Recorders[0].Location,
+		RTSP:             cfg.Recorders[0].RTSP,
+		StorageProviders: []config.StorageProvider{},
+	}
+	streamRecorder := stream.NewStreamRecorder(cameraConfig, cfg.LocalStoragePath)
+	_ = streamRecorder.Initialize()
+	defer streamRecorder.StopRecording()
+
+	err = streamRecorder.StartRecording()
+	if err != nil {
+		fmt.Println("Error starting recording:", err)
+		os.Exit(1)
+	}
 
 	fmt.Println("Application is running... Press Ctrl+C to exit.")
 
