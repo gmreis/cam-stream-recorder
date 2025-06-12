@@ -5,31 +5,30 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/gmreis/cam-stream-recorder/internal/config"
-
 	"github.com/bluenviron/gortsplib/v4"
 	"github.com/bluenviron/gortsplib/v4/pkg/base"
 	"github.com/bluenviron/gortsplib/v4/pkg/format"
 	"github.com/bluenviron/gortsplib/v4/pkg/format/rtph264"
+	"github.com/gmreis/cam-stream-recorder/internal/config"
 	"github.com/pion/rtp"
 )
 
 type StreamRecorder struct {
-	camera           config.CameraConfig
-	localStoragePath string
-	client           *gortsplib.Client
+	// camera           config.CameraConfig
+	// localStoragePath string
+	client *gortsplib.Client
 }
 
-func NewStreamRecorder(camera config.CameraConfig, localStoragePath string) *StreamRecorder {
+func NewStreamRecorder() StreamService {
 	return &StreamRecorder{
-		camera:           camera,
-		localStoragePath: localStoragePath,
-		client:           &gortsplib.Client{},
+		// camera:           camera,
+		// localStoragePath: localStoragePath,
+		client: &gortsplib.Client{},
 	}
 }
 
-func (sr *StreamRecorder) Initialize() error {
-	u, err := base.ParseURL(sr.camera.RTSP)
+func (sr *StreamRecorder) Initialize(camera config.Recorder, localStoragePath string) error {
+	u, err := base.ParseURL(camera.RTSP)
 	if err != nil {
 		panic(err)
 	}
@@ -130,11 +129,12 @@ func (sr *StreamRecorder) StartRecording() error {
 	return nil
 }
 
-func (sr *StreamRecorder) StopRecording() {
+func (sr *StreamRecorder) StopRecording() error {
 	if sr.client != nil {
 		sr.client.Close()
 	}
-	log.Println("Recording stopped")
+	log.Println("Recording stopped!!!!!!!!!!!!!!!!!!!!!")
+	return nil
 }
 
 // func StreamRecorder(camera CameraConfig, localProvider LocalProvider) error {

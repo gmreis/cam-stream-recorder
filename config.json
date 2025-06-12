@@ -21,7 +21,7 @@
       "name": "Back Yard",
       "location": "outdoor",
       "video_decoder": "h264",
-      "rtsp": "rtsp://backyard:554/stream",
+      "rtsp": "rtsp://localhost:8554/mystream",
       "storage_providers": ["aws"]
     }
   ]

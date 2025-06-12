@@ -5,7 +5,7 @@ type StorageProvider interface {
 	UploadFile(filePath string) error
 }
 
-type CameraConfig struct {
+type Recorder struct {
 	Name             string
 	Location         string
 	RTSP             string
@@ -14,5 +14,5 @@ type CameraConfig struct {
 
 type StreamConfig struct {
 	StorageProviders []StorageProvider
-	Cameras          []CameraConfig
+	Recorders        []Recorder
 }

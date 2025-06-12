@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/gmreis/cam-stream-recorder/cmd/dtos"
 	"github.com/gmreis/cam-stream-recorder/internal/config"
@@ -23,6 +28,68 @@ func loadConfig(path string) (*dtos.Config, error) {
 	return &cfg, nil
 }
 
+func startStreamWorker(ctx context.Context, wg *sync.WaitGroup, recorder dtos.Recorder, defaultConfig dtos.DefaultConfig) {
+	defer wg.Done()
+
+	// Convert dtos.Recorder to config.CameraConfig
+	cameraConfig := config.Recorder{
+		Name:             recorder.Name,
+		Location:         recorder.Location,
+		RTSP:             recorder.RTSP,
+		StorageProviders: []config.StorageProvider{}, // recorder.StorageProviders, // Provider configurations
+	}
+
+	streamRecorder := stream.NewStreamRecorder()
+	err := streamRecorder.Initialize(cameraConfig, "LocalStoragePath")
+	if err != nil {
+		log.Printf("Error initializing stream recorder for camera %s: %v", recorder.Name, err)
+		return
+	}
+
+	done := make(chan struct{})
+	go func() {
+		err = streamRecorder.StartRecording()
+		if err != nil {
+			log.Printf("Error starting recording for camera %s: %v", recorder.Name, err)
+			return
+		}
+		close(done)
+	}()
+
+	log.Printf("Recording started for camera %s", recorder.Name)
+
+	// Wait for the context to be done or for the recording to finish
+	select {
+	case <-ctx.Done(): // TODO: When ctx is cancelled, the StopRecording will be called???
+		streamRecorder.StopRecording()
+	case <-done:
+		streamRecorder.StopRecording()
+	}
+
+	log.Printf("Recording stopped for camera %s", recorder.Name)
+}
+
+func shutdownHandler(wg *sync.WaitGroup, cancel context.CancelFunc, stop chan os.Signal) {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	log.Println("Application is running... Press Ctrl+C to exit.")
+
+	select {
+	case <-stop:
+		log.Println("Received stop signal, stopping recording...")
+		cancel()
+		<-done
+	case <-done:
+		log.Println("All recordings finished.")
+	}
+
+	log.Println("All recordings stopped, cleaning up...")
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Use: ./cam-stream-recorder <caminho_config.json>")
@@ -36,32 +103,17 @@ func main() {
 	}
 	fmt.Printf("Config loaded successfully: %+v\n", cfg)
 
-	// ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	// defer stop()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	// defer func() {
-	// 	if r := recover(); r != nil {
-	// 		fmt.Println("Recovered from panic:", r)
-	// 	}
-	// }()
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
-	// Convert dtos.Recorder to config.CameraConfig before passing
-	cameraConfig := config.CameraConfig{
-		Name:             cfg.Recorders[0].Name,
-		Location:         cfg.Recorders[0].Location,
-		RTSP:             cfg.Recorders[0].RTSP,
-		StorageProviders: []config.StorageProvider{},
-	}
-	streamRecorder := stream.NewStreamRecorder(cameraConfig, cfg.LocalStoragePath)
-	_ = streamRecorder.Initialize()
-	defer streamRecorder.StopRecording()
+	for _, recorder := range cfg.Recorders {
+		wg.Add(1)
 
-	err = streamRecorder.StartRecording()
-	if err != nil {
-		fmt.Println("Error starting recording:", err)
-		os.Exit(1)
+		go startStreamWorker(ctx, wg, recorder, cfg.DefaultConfig)
 	}
 
-	fmt.Println("Application is running... Press Ctrl+C to exit.")
-
+	shutdownHandler(wg, cancel, stop)
 }
